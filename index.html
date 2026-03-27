@@ -2,386 +2,536 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>C:\Windows\System32\cmd.exe</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>root@SYSTEM — bash</title>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
 
-  body {
-    background: #1e1e1e;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
-    font-family: 'Segoe UI', sans-serif;
-    user-select: none;
-  }
+body {
+  background: #0a0a0a;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Courier New', Consolas, monospace;
+  overflow: hidden;
+  user-select: none;
+}
 
-  /* ── CMD WINDOW ── */
-  #cmd-window {
-    width: 830px;
-    height: 520px;
-    display: flex;
-    flex-direction: column;
-    border: 1px solid #444;
-    box-shadow: 0 8px 40px rgba(0,0,0,0.85);
-  }
+@keyframes flicker    { 0%,100%{opacity:1} 49%{opacity:1} 50%{opacity:.25} 51%{opacity:1} 94%{opacity:1} 96%{opacity:.5} 97%{opacity:1} }
+@keyframes blink      { 50%{opacity:0} }
+@keyframes redpulse   { 0%,100%{box-shadow:0 0 60px rgba(200,0,0,.18)} 50%{box-shadow:0 0 120px rgba(255,0,0,.35)} }
+@keyframes bigshake   { 0%{transform:translate(0,0)} 20%{transform:translate(-4px,3px)} 40%{transform:translate(4px,-3px)} 60%{transform:translate(-3px,4px)} 80%{transform:translate(3px,-2px)} 100%{transform:translate(0,0)} }
+@keyframes fastshake  { 0%{transform:translate(0,0)} 25%{transform:translate(-6px,4px)} 50%{transform:translate(6px,-4px)} 75%{transform:translate(-4px,6px)} 100%{transform:translate(0,0)} }
+@keyframes scanmove   { 0%{top:-80px} 100%{top:100%} }
+@keyframes glitchclip { 0%,90%,100%{clip-path:none;transform:none} 92%{clip-path:inset(15% 0 65% 0);transform:translateX(-5px)} 94%{clip-path:inset(65% 0 5% 0);transform:translateX(5px)} 96%{clip-path:none;transform:none} }
+@keyframes cntpulse   { 0%,100%{transform:scale(1);color:#ff2200} 50%{transform:scale(1.25);color:#ff0000} }
+@keyframes alertslide { from{transform:translateY(-100%)} to{transform:translateY(0)} }
+@keyframes fadein     { from{opacity:0} to{opacity:1} }
 
-  /* Title bar */
-  #title-bar {
-    height: 30px;
-    background: #1a1a1a;
-    display: flex;
-    align-items: center;
-    padding: 0 10px;
-    flex-shrink: 0;
-    border-bottom: 1px solid #000;
-  }
-  #title-bar .ico { width:16px; height:16px; background:#888; margin-right:8px; font-size:11px; display:flex; align-items:center; justify-content:center; }
-  #title-bar .ttl { color: #ccc; font-size: 12px; flex: 1; letter-spacing: 0.3px; }
-  .wb { width:46px; height:30px; border:none; background:transparent; color:#bbb; font-size:14px; cursor:pointer; }
-  .wb:hover { background:#3a3a3a; }
-  .wb.cl:hover { background:#c42b1c; color:#fff; }
+/* ─── WRAPPER ─── */
+#wrap {
+  width: 900px;
+  max-width: 98vw;
+  background: #000;
+  border-radius: 8px;
+  border: 1px solid #1a0000;
+  overflow: hidden;
+  position: relative;
+  animation: redpulse 2.5s ease-in-out infinite;
+}
 
-  /* Terminal area */
-  #term {
-    flex: 1;
-    background: #0c0c0c;
-    color: #cccccc;
-    font-family: Consolas, "Courier New", monospace;
-    font-size: 14px;
-    line-height: 1.3;
-    padding: 5px 8px;
-    overflow: hidden;
-    position: relative;
-  }
-  #out { white-space: pre-wrap; word-break: break-all; }
-  #caret {
-    display: inline-block;
-    width: 8px; height: 15px;
-    background: #cccccc;
-    vertical-align: text-bottom;
-    animation: blink 1.1s step-end infinite;
-  }
-  @keyframes blink { 50% { opacity: 0; } }
+/* scanline + glitch layers */
+#scanline {
+  pointer-events: none;
+  position: absolute; left:0; right:0; height:80px;
+  background: linear-gradient(transparent, rgba(255,20,0,.06), transparent);
+  z-index: 25;
+  animation: scanmove 4s linear infinite;
+}
+#glitch-layer {
+  pointer-events: none;
+  position: absolute; inset:0;
+  z-index: 24;
+  animation: glitchclip 5s infinite;
+  background: repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(255,0,0,.025) 3px,rgba(255,0,0,.025) 4px);
+}
 
-  /* ── JUMPSCARE OVERLAY ── */
-  #scare {
-    display: none;
-    position: fixed; inset: 0;
-    background: #000;
-    z-index: 998;
-    overflow: hidden;
-  }
-  #scare img {
-    width: 100%; height: 100%;
-    object-fit: cover;
-    filter: saturate(0%) contrast(180%) brightness(80%);
-    animation: thrash 0.08s linear infinite;
-    transform-origin: center;
-  }
-  @keyframes thrash {
-    0%   { transform: translate(-8px, 6px) rotate(-1.5deg) scale(1.04); filter: hue-rotate(0deg) saturate(0%) contrast(200%) brightness(60%); }
-    20%  { transform: translate(10px,-8px) rotate(2deg)   scale(1.06); filter: hue-rotate(180deg) saturate(200%) contrast(300%) brightness(120%); }
-    40%  { transform: translate(-6px, 4px) rotate(-2.5deg) scale(1.02); filter: hue-rotate(0deg) saturate(0%) contrast(200%) brightness(50%); }
-    60%  { transform: translate(8px, -5px) rotate(1.5deg)  scale(1.05); filter: hue-rotate(90deg) saturate(300%) contrast(250%) brightness(100%); }
-    80%  { transform: translate(-10px,8px) rotate(-1deg)   scale(1.07); filter: hue-rotate(0deg) saturate(0%) contrast(200%) brightness(70%); }
-    100% { transform: translate(5px, -6px) rotate(2deg)    scale(1.03); filter: hue-rotate(270deg) saturate(200%) contrast(300%) brightness(110%); }
-  }
-  /* Red flash strips that appear on top of the image */
-  #flash-strips {
-    position: fixed; inset: 0; z-index: 999;
-    pointer-events: none;
-    animation: flashRed 0.1s linear infinite;
-  }
-  @keyframes flashRed {
-    0%,100% { background: transparent; }
-    50%     { background: rgba(180, 0, 0, 0.45); }
-  }
+/* ─── TITLE BAR ─── */
+#titlebar {
+  background: #0c0000;
+  padding: 8px 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid #1f0000;
+  position: relative;
+  z-index: 5;
+}
+.dot { width:13px; height:13px; border-radius:50%; display:inline-block; }
+.dot-r{background:#ff5f57;} .dot-y{background:#febc2e;} .dot-g{background:#28c840;}
+#ttl { color:#3a0000; font-size:12px; margin-left:8px; flex:1; letter-spacing:.5px; transition: color .3s; }
+#ttl.alert { color:#ff2200; animation: flicker 1.2s infinite; }
 
-  /* ── SAFE SCREEN ── */
-  #safe {
-    display: none;
-    position: fixed; inset: 0;
-    background: #0a0a0a;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-    cursor: auto;
-  }
-  #safe div { text-align: center; }
-  #safe h1 { font-size: 2rem; color: #4caf50; font-weight: 300; margin-bottom: 10px; font-family: 'Segoe UI', sans-serif; }
-  #safe p  { color: #555; font-size: 0.95rem; font-family: 'Segoe UI', sans-serif; }
+/* ─── ALERT BANNER ─── */
+#alertbanner {
+  display: none;
+  background: #0d0000;
+  border-top: 2px solid #ff0000;
+  border-bottom: 2px solid #ff0000;
+  padding: 10px 16px;
+  text-align: center;
+  animation: alertslide .3s ease-out, bigshake .12s infinite;
+}
+#alertbanner .a1 { color:#ff0000; font-size:13px; letter-spacing:3px; animation:flicker .6s infinite; }
+#alertbanner .a2 { color:#cc2200; font-size:11px; margin-top:5px; }
 
-  /* Screen shake class applied to body */
-  .shake-body { animation: bodyShake 0.15s linear infinite; }
-  @keyframes bodyShake {
-    0%   { transform: translate(-4px, 3px); }
-    25%  { transform: translate(5px, -4px); }
-    50%  { transform: translate(-5px,-3px); }
-    75%  { transform: translate(4px,  5px); }
-    100% { transform: translate(-4px, 3px); }
-  }
+/* ─── STATS BAR ─── */
+#statsbar {
+  display: none;
+  background: #050000;
+  border-bottom: 1px solid #1a0000;
+  padding: 10px 0 8px;
+  animation: fadein .5s ease;
+}
+.stats-row { display:flex; }
+.stat {
+  flex:1; text-align:center;
+  border-right: 1px solid #1a0000;
+  padding: 0 10px;
+}
+.stat:last-child { border-right:none; }
+.stat-lbl { font-size:9px; color:#3a0000; letter-spacing:2px; text-transform:uppercase; margin-bottom:4px; }
+.stat-val { font-size:18px; color:#ff2200; font-weight:600; animation:flicker 2.5s infinite; }
+.stat-val.crit { color:#ff0000; animation:flicker .5s infinite; }
+
+/* ─── PROGRESS BAR ─── */
+#barwrap { display:none; padding:0 16px 8px; background:#000; }
+#bar-labels { font-size:11px; color:#440000; margin-bottom:5px; display:flex; justify-content:space-between; }
+#bar-out { background:#0d0000; border:1px solid #2a0000; border-radius:3px; height:10px; overflow:hidden; }
+#bar-in  { height:100%; width:0%; background:linear-gradient(90deg,#cc0000,#ff2200); border-radius:3px; transition:width .12s; box-shadow:0 0 10px #ff0000; }
+
+/* ─── TERMINAL LOG ─── */
+#screen { padding:12px 14px; min-height:360px; position:relative; overflow:hidden; }
+#log {
+  line-height: 1.85;
+  max-height: 360px;
+  overflow-y: auto;
+  font-size: 13px;
+  animation: glitchclip 10s infinite;
+}
+#log::-webkit-scrollbar { width:3px; }
+#log::-webkit-scrollbar-thumb { background:#2a0000; }
+
+.dim  { color:#2a1000; }
+.sys  { color:#ff4400; }
+.warn { color:#ff0000; font-weight:600; }
+.path { color:#cc2200; }
+.info { color:#ff6600; }
+.crit { color:#ff0000; animation:flicker .4s infinite; }
+.ok   { color:#550000; }
+.bl   { animation:blink .7s step-end infinite; }
+
+/* ─── DOOM COUNTDOWN ─── */
+#doomscreen {
+  display:none;
+  position:absolute; inset:0;
+  background:#000;
+  z-index:30;
+  align-items:center;
+  justify-content:center;
+  flex-direction:column;
+  gap:14px;
+  padding:24px;
+}
+#doom-title { color:#ff0000; font-size:18px; letter-spacing:5px; text-align:center; animation:flicker .4s infinite; }
+#doom-msg   { color:#550000; font-size:12px; text-align:center; line-height:2.1; }
+#doom-count { font-size:72px; color:#ff0000; text-align:center; animation:cntpulse 1s infinite; }
+#doom-sub   { color:#2a0000; font-size:11px; }
+
+/* ─── FINAL DEAD SCREEN ─── */
+#finalscreen {
+  display:none;
+  position:absolute; inset:0;
+  background:#000;
+  z-index:40;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:14px;
+  animation: fadein .4s ease;
+}
+#final-title { color:#ff0000; font-size:17px; letter-spacing:4px; animation:flicker .7s infinite; }
+#final-body  { color:#330000; font-size:12px; text-align:center; line-height:2.3; }
+#final-blink { color:#ff0000; font-size:12px; animation:blink 1s step-end infinite; }
+
+/* ─── ESC HINT ─── */
+#esc-hint {
+  display:none;
+  position:absolute;
+  bottom:10px; right:14px;
+  font-size:10px;
+  color:#1a0000;
+  z-index:50;
+  animation: fadein 1s ease;
+}
+
+/* ─── SAFE SCREEN ─── */
+#safescreen {
+  display:none;
+  position:fixed; inset:0;
+  background:#0a0a0a;
+  align-items:center;
+  justify-content:center;
+  z-index:9999;
+  cursor:auto;
+  animation: fadein .5s ease;
+}
+#safescreen div { text-align:center; }
+#safescreen h1  { font-size:2.2rem; color:#4caf50; font-weight:300; margin-bottom:12px; font-family: 'Segoe UI', sans-serif; }
+#safescreen p   { color:#444; font-size:1rem; font-family: 'Segoe UI', sans-serif; }
 </style>
 </head>
 <body>
 
-<!-- Fake Windows CMD Window -->
-<div id="cmd-window">
-  <div id="title-bar">
-    <div class="ico">▪</div>
-    <div class="ttl">Administrator: C:\Windows\System32\cmd.exe</div>
-    <button class="wb">─</button>
-    <button class="wb">□</button>
-    <button class="wb cl">✕</button>
+<div id="wrap">
+  <div id="scanline"></div>
+  <div id="glitch-layer"></div>
+
+  <!-- Title bar -->
+  <div id="titlebar">
+    <span class="dot dot-r"></span>
+    <span class="dot dot-y"></span>
+    <span class="dot dot-g"></span>
+    <span id="ttl">root@SYSTEM — bash — 80×24</span>
   </div>
-  <div id="term">
-    <div id="out"></div>
-    <span id="caret"></span>
+
+  <!-- Alert banner -->
+  <div id="alertbanner">
+    <div class="a1">⚠ &nbsp; CRITICAL SYSTEM FAILURE — DO NOT POWER OFF &nbsp; ⚠</div>
+    <div class="a2">Interrupting this process may cause permanent hardware damage</div>
+  </div>
+
+  <!-- Stats bar -->
+  <div id="statsbar">
+    <div class="stats-row">
+      <div class="stat"><div class="stat-lbl">Files Destroyed</div><div class="stat-val" id="s-files">0</div></div>
+      <div class="stat"><div class="stat-lbl">Data Wiped</div><div class="stat-val" id="s-mb">0.0 GB</div></div>
+      <div class="stat"><div class="stat-lbl">Partitions</div><div class="stat-val crit" id="s-part">14 / 14</div></div>
+      <div class="stat"><div class="stat-lbl">Recovery</div><div class="stat-val crit">IMPOSSIBLE</div></div>
+    </div>
+  </div>
+
+  <!-- Progress bar -->
+  <div id="barwrap">
+    <div id="bar-labels">
+      <span id="bar-lbl">Wiping filesystem…</span>
+      <span id="bar-pct">0%</span>
+    </div>
+    <div id="bar-out"><div id="bar-in"></div></div>
+  </div>
+
+  <!-- Log area -->
+  <div id="screen">
+    <div id="log">
+      <span class="dim">Last login: Thu Mar 27 09:13:02 2025 on ttys001</span><br>
+      <span class="dim">root@SYSTEM:~# <span class="bl">█</span></span><br>
+    </div>
+  </div>
+
+  <!-- Countdown doom screen -->
+  <div id="doomscreen">
+    <div id="doom-title">☠ &nbsp; SYSTEM DESTRUCTION COMPLETE &nbsp; ☠</div>
+    <div id="doom-msg">
+      All <strong id="doom-fc" style="color:#ff2200">0</strong> files permanently deleted.<br>
+      Boot sector overwritten. MBR destroyed.<br>
+      Cloud backups: <span style="color:#ff0000">WIPED</span> &nbsp;│&nbsp;
+      Recovery partition: <span style="color:#ff0000">GONE</span><br>
+      Time Machine backup: <span style="color:#ff0000">CORRUPTED</span>
+    </div>
+    <div id="doom-count">5</div>
+    <div id="doom-sub">Forced shutdown in…</div>
+  </div>
+
+  <!-- Final dead screen -->
+  <div id="finalscreen">
+    <div id="final-title">NO BOOTABLE DEVICE FOUND</div>
+    <div id="final-body">
+      Operating system not found.<br>
+      All partitions unreadable.<br>
+      Disk integrity: <span style="color:#ff0000">0%</span><br>
+      Hardware damage detected on <span style="color:#cc2200">/dev/sda</span><br>
+      Secure Enclave: <span style="color:#ff0000">DESTROYED</span>
+    </div>
+    <div id="final-blink">_ insert recovery media and restart _</div>
+    <div id="esc-hint">Press ESC to exit</div>
   </div>
 </div>
 
-<!-- Jumpscare face -->
-<div id="scare">
-  <img src="scare.png" alt="" id="scare-img">
-  <div id="flash-strips"></div>
-</div>
-
-<!-- Safe end screen -->
-<div id="safe">
+<!-- Safe / reveal screen -->
+<div id="safescreen">
   <div>
-    <h1>😌 Relax — it's just a prank!</h1>
+    <h1>😌 &nbsp; Just a Prank!</h1>
     <p>No files were touched. Your system is perfectly fine.</p>
+    <p style="margin-top:8px; color:#222; font-size:.85rem;">You can safely close this tab.</p>
   </div>
 </div>
 
 <script>
-  // ───────── Navigation lock ─────────
-  // Push a dummy state so back button has nowhere useful to go
-  history.pushState(null, '', window.location.href);
-  window.addEventListener('popstate', () => {
-    history.pushState(null, '', window.location.href);
-  });
+/* ── Navigation lock ── */
+history.pushState(null, '', location.href);
+function navLock() { history.pushState(null, '', location.href); }
+window.addEventListener('popstate', navLock);
+document.addEventListener('contextmenu', e => e.preventDefault());
+document.addEventListener('keydown', e => {
+  const blk = e.key==='F5' || ((e.ctrlKey||e.metaKey)&&e.key==='r')
+            || (e.altKey&&e.key==='ArrowLeft')
+            || (e.key==='Backspace' && !['INPUT','TEXTAREA'].includes(document.activeElement.tagName));
+  if (blk) e.preventDefault();
+}, true);
 
-  // Block right-click
-  document.addEventListener('contextmenu', e => e.preventDefault());
-
-  // Block F5, Ctrl+R, Alt+Left (back), Backspace navigation
-  document.addEventListener('keydown', e => {
-    const blocked = [
-      e.key === 'F5',
-      e.key === 'r' && (e.ctrlKey || e.metaKey),
-      e.key === 'ArrowLeft' && e.altKey,
-      e.key === 'Backspace' && !['INPUT','TEXTAREA'].includes(document.activeElement.tagName)
-    ];
-    if (blocked.some(Boolean)) e.preventDefault();
-  }, true);
-
-  // ───────── Helpers ─────────
-  const out   = document.getElementById('out');
-  const caret = document.getElementById('caret');
-  const scare = document.getElementById('scare');
-  const safe  = document.getElementById('safe');
-
-  let alive = true;
-  let scareShown = false; // ESC only works after jumpscare
-  const USER = (navigator.userAgent.match(/Windows NT/) ? "USER" : "USER");
-
-  function w(text) { if (alive) { out.textContent += text; scrollToBottom(); } }
-  function wl(t='') { w(t + '\n'); }
-  function scrollToBottom() {
-    const term = document.getElementById('term');
-    term.scrollTop = term.scrollHeight;
+/* ── Ambient alarm sound (Web Audio) ── */
+let audioCtx;
+function startAlarm() {
+  audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+  function beep() {
+    if (!audioCtx) return;
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = 'square';
+    o.frequency.value = 880;
+    g.gain.setValueAtTime(.18, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(.001, audioCtx.currentTime + .18);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(); o.stop(audioCtx.currentTime + .18);
   }
-  function rnd(a,b) { return a + Math.floor(Math.random() * (b - a)); }
-  function wait(ms) { return new Promise(res => setTimeout(res, ms)); }
+  beep();
+  return setInterval(beep, 1400);
+}
 
-  // ───────── Web Audio Screech ─────────
-  function playScream() {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+/* ── Data ── */
+const PATHS = [
+  ['/boot/efi/EFI/BOOT/bootx64.efi',           'EFI BOOTLOADER'],
+  ['/boot/vmlinuz-5.15.0-91-generic',           'LINUX KERNEL IMAGE'],
+  ['/boot/initrd.img-5.15.0-91-generic',        'INIT RAMDISK'],
+  ['/boot/grub/grub.cfg',                       'GRUB BOOTLOADER CONFIG'],
+  ['C:\\Windows\\System32\\ntoskrnl.exe',       'WINDOWS NT KERNEL'],
+  ['C:\\Windows\\System32\\hal.dll',            'HARDWARE ABSTRACTION LAYER'],
+  ['C:\\Windows\\System32\\config\\SAM',        'SECURITY ACCOUNTS DB'],
+  ['C:\\Windows\\System32\\config\\SYSTEM',     'SYSTEM REGISTRY HIVE'],
+  ['C:\\Windows\\System32\\config\\SOFTWARE',   'SOFTWARE REGISTRY HIVE'],
+  ['C:\\Windows\\System32\\lsass.exe',          'LOCAL SECURITY AUTHORITY'],
+  ['C:\\Windows\\System32\\winlogon.exe',       'WINDOWS LOGON PROCESS'],
+  ['/etc/shadow',                               'ROOT PASSWORD HASHES'],
+  ['/etc/passwd',                               'USER ACCOUNT DATABASE'],
+  ['/etc/fstab',                                'PARTITION TABLE'],
+  ['/etc/ssh/ssh_host_ed25519_key',             'SSH HOST PRIVATE KEY'],
+  ['/home/user/.ssh/id_rsa',                    'RSA PRIVATE KEY (4096-bit)'],
+  ['/home/user/.gnupg/secring.gpg',             'GPG SECRET KEYRING'],
+  ['/home/user/Documents/',                     'ALL USER DOCUMENTS (6.1 GB)'],
+  ['/home/user/Pictures/family_photos/2023/',   'FAMILY PHOTOS 2023 (2.4 GB)'],
+  ['/home/user/Pictures/family_photos/2024/',   'FAMILY PHOTOS 2024 (3.1 GB)'],
+  ['/home/user/Desktop/thesis_FINAL_v7.docx',  'THESIS — 4 YEARS OF WORK'],
+  ['/home/user/Desktop/tax_returns_2019-2024.pdf','TAX DOCUMENTS (6 YEARS)'],
+  ['/home/user/Desktop/passwords.xlsx',         'SAVED PASSWORDS SPREADSHEET'],
+  ['/home/user/Desktop/crypto_wallet.dat',      'CRYPTO WALLET — $12,480 USD'],
+  ['C:\\Users\\User\\Documents\\work_project/', 'WORK PROJECTS (18 GB)'],
+  ['C:\\Users\\User\\Documents\\client_contracts\\','LEGAL DOCUMENTS'],
+  ['C:\\Users\\User\\Desktop\\wallet_seed.txt', 'CRYPTO SEED PHRASE'],
+  ['/var/lib/mysql/ibdata1',                    'MAIN DATABASE (28.4 GB)'],
+  ['/var/lib/mysql/wordpress/wp_users',         'USER CREDENTIALS TABLE'],
+  ['/var/lib/postgresql/14/main/',              'POSTGRES DATABASE CLUSTER'],
+  ['/var/backups/daily.tar.gz',                 'DAILY BACKUP ARCHIVE'],
+  ['/var/backups/weekly.tar.gz',                'WEEKLY BACKUP ARCHIVE'],
+  ['/var/log/auth.log',                         'AUTH LOGS (COVERING TRACKS)'],
+  ['/lib/x86_64-linux-gnu/libc.so.6',          'CORE C LIBRARY'],
+  ['/lib/modules/5.15.0-91-generic/kernel',    'ALL KERNEL MODULES'],
+  ['/usr/lib/systemd/systemd',                  'INIT SYSTEM (PID 1)'],
+  ['/usr/bin/bash',                             'BASH SHELL BINARY'],
+  ['/usr/bin/sudo',                             'PRIVILEGE ESCALATION BINARY'],
+  ['MBR /dev/sda offset 0x000',                'MASTER BOOT RECORD'],
+  ['/dev/sda1 (512 MB)',                        'EFI SYSTEM PARTITION'],
+  ['/dev/sda2 (1.8 TB)',                        'PRIMARY DATA PARTITION'],
+  ['/dev/sda3 (32 GB)',                         'RECOVERY PARTITION'],
+  ['FIRMWARE NVRAM',                            'BIOS/UEFI SETTINGS'],
+  ['TPM 2.0 keystore',                          'HARDWARE ENCRYPTION KEYS'],
+  ['iCloud Keychain sync',                      'CLOUD SAVED PASSWORDS'],
+  ['Google Drive cache (48 GB)',                'CLOUD BACKUP — ALL FILES'],
+  ['Dropbox local cache (22 GB)',               'CLOUD BACKUP — DOCS'],
+];
 
-    // White noise burst
-    const bufLen = ctx.sampleRate * 2.5;
-    const buffer = ctx.createBuffer(1, bufLen, ctx.sampleRate);
-    const data   = buffer.getChannelData(0);
-    for (let i = 0; i < bufLen; i++) {
-      // Fade in quickly, hold, fade out
-      const t = i / bufLen;
-      const env = t < 0.02 ? t / 0.02 : t > 0.7 ? (1 - (t - 0.7) / 0.3) : 1;
-      data[i] = (Math.random() * 2 - 1) * env;
-    }
-    const noise = ctx.createBufferSource();
-    noise.buffer = buffer;
+const INTRO = [
+  ['dim',  'Checking sudo credentials...'],
+  ['sys',  '[KERNEL] Root access granted — all safeguards disabled'],
+  ['sys',  '[KERNEL] Bypassing filesystem write-protection...'],
+  ['warn', '[!!!] Journaling disabled — all changes are UNRECOVERABLE'],
+  ['sys',  '[KERNEL] Unmounting recovery partition /dev/sda3 ... done'],
+  ['sys',  '[KERNEL] Unmounting Time Machine volume ... done'],
+  ['warn', '[!!!] Cloud sync forcibly interrupted — credentials revoked'],
+  ['sys',  '[KERNEL] Revoking TPM 2.0 encryption keys ... done'],
+  ['info', '[SCAN] Enumerated 1,982,741 files across 14 partitions'],
+  ['warn', '[INIT] Wipe sequence armed — this CANNOT be stopped'],
+];
 
-    // Distortion for harshness
-    const dist = ctx.createWaveShaper();
-    const curve = new Float32Array(256);
-    for (let i = 0; i < 256; i++) { const x = (i * 2) / 256 - 1; curve[i] = (Math.PI + 400) * x / (Math.PI + 400 * Math.abs(x)); }
-    dist.curve = curve;
+/* ── State ── */
+let fileCount=0, mbWiped=0, alarmInterval=null, ended=false;
 
-    // Low frequency thump
-    const osc = ctx.createOscillator();
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(80, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(30, ctx.currentTime + 1.5);
-    const oscGain = ctx.createGain();
-    oscGain.gain.setValueAtTime(0.6, ctx.currentTime);
-    oscGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 2);
-    osc.connect(oscGain);
-    oscGain.connect(ctx.destination);
+function el(id){ return document.getElementById(id); }
 
-    const gainNode = ctx.createGain();
-    gainNode.gain.value = 1.8; // LOUD
-    noise.connect(dist);
-    dist.connect(gainNode);
-    gainNode.connect(ctx.destination);
+function appendLog(cls, text) {
+  const log = el('log');
+  const span = document.createElement('span');
+  span.className = cls;
+  span.textContent = text;
+  log.appendChild(span);
+  log.appendChild(document.createElement('br'));
+  log.scrollTop = log.scrollHeight;
+}
 
-    noise.start();
-    osc.start();
-    noise.stop(ctx.currentTime + 2.5);
-    osc.stop(ctx.currentTime + 2.5);
+/* ── Type command char by char ── */
+async function typeCmd(prompt, cmd) {
+  const log = el('log');
+  const line = document.createElement('span');
+  line.className = 'dim';
+  line.textContent = prompt;
+  log.appendChild(line);
+  log.scrollTop = log.scrollHeight;
+  await sleep(500);
+  for (const ch of cmd) {
+    line.textContent += ch;
+    log.scrollTop = log.scrollHeight;
+    await sleep(35 + Math.random() * 90);
   }
+  await sleep(400);
+  log.appendChild(document.createElement('br'));
+}
 
-  // ───────── Fake files ─────────
-  const dirs = [
-    `C:\\Users\\${USER}\\Documents\\`,
-    `C:\\Users\\${USER}\\Desktop\\`,
-    `C:\\Users\\${USER}\\Downloads\\`,
-    `C:\\Users\\${USER}\\Pictures\\`,
-    `C:\\Users\\${USER}\\AppData\\Roaming\\Microsoft\\Credentials\\`,
-    `C:\\Windows\\System32\\`,
-    `C:\\Windows\\System32\\config\\`,
-  ];
-  const fnames = [
-    "Passwords","Tax_Return_2024","Resume_FINAL","Family_Photos_Backup","id_proof_scan",
-    "salary_record","bank_details","privatekeys","photos_2024","ntdll","kernel32",
-    "SAM","SYSTEM","SOFTWARE","SECURITY","lsass","winlogon","svchost","hal"
-  ];
-  const exts = [".docx",".pdf",".xlsx",".txt",".jpg",".png",".sys",".dll",""];
+function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
+function rnd(a,b){ return a + Math.floor(Math.random()*(b-a)); }
 
-  function fakeFile() {
-    const d = dirs[rnd(0, dirs.length)];
-    let n = fnames[rnd(0, fnames.length)];
-    if (d.includes("System32") || d.includes("config")) {
-      return d + ["ntdll","kernel32","hal","SAM","SYSTEM","lsass","winlogon","svchost"][rnd(0,8)]
-               + [".dll",".sys",".exe",""][rnd(0,4)];
-    }
-    return d + n + (rnd(0,2) ? "_" + rnd(1,999) : "") + exts[rnd(0, exts.length)];
+/* ── Main sequence ── */
+async function main() {
+  await sleep(600);
+
+  /* 1 — type the command */
+  await typeCmd('root@SYSTEM:~# ', 'python3 wipe.py --target=all --no-confirm --irreversible');
+  await sleep(300);
+
+  /* 2 — intro log lines */
+  for (const [cls, msg] of INTRO) {
+    appendLog(cls, msg);
+    await sleep(260);
   }
+  await sleep(400);
 
-  // ───────── Type text as if a human typed it ─────────
-  async function typeCmd(prompt, cmd) {
-    w(prompt);
-    for (const ch of cmd) {
-      if (!alive) return;
-      w(ch);
-      await wait(rnd(28, 105));
-    }
-    await wait(rnd(280, 500));
-    w('\n');
+  /* 3 — show stats / bar / alert */
+  el('alertbanner').style.display = 'block';
+  el('statsbar').style.display    = 'block';
+  el('barwrap').style.display     = 'block';
+  el('ttl').className = 'alert';
+  el('ttl').textContent = '⚠  root@SYSTEM — DELETION IN PROGRESS  ⚠';
+  el('wrap').style.animation = 'bigshake .15s infinite, redpulse 1s infinite';
+
+  alarmInterval = startAlarm();
+
+  /* 4 — wipe files */
+  const total = PATHS.length;
+  for (let i = 0; i < total; i++) {
+    const [path, label] = PATHS[i];
+    const chunk = Math.random()*55 + 8;
+    mbWiped   += chunk;
+    fileCount += rnd(14000, 55000);
+
+    appendLog('path', `[WIPED] ${path}  →  ${label}`);
+    el('s-files').textContent = fileCount.toLocaleString();
+    el('s-mb').textContent    = (mbWiped/1024).toFixed(2) + ' GB';
+
+    const pct = Math.round(((i+1)/total)*100);
+    el('bar-in').style.width  = pct + '%';
+    el('bar-pct').textContent = pct + '%';
+    if (pct > 65) el('bar-lbl').textContent = 'Overwriting sectors…';
+    if (pct > 85) el('bar-lbl').textContent = 'Destroying partition table…';
+    if (pct > 95) el('bar-lbl').textContent = 'Wiping FIRMWARE…';
+
+    el('wrap').style.animation = pct > 80
+      ? 'fastshake .07s infinite, redpulse .6s infinite'
+      : 'bigshake .15s infinite, redpulse 1s infinite';
+
+    await sleep(rnd(90, 220));
   }
+  await sleep(500);
 
-  // ───────── Jumpscare ─────────
-  function showSafe() {
-    scare.style.display = 'none';
-    document.body.classList.remove('shake-body');
-    document.body.style.background = '#0a0a0a';
-    safe.style.display = 'flex';
-    document.body.style.cursor = 'auto';
-    // Unlock navigation
+  /* 5 — a few extra creepy lines */
+  appendLog('warn', '[!!!] Overwriting MBR with zeroes (/dev/sda, 512 bytes)... done');
+  await sleep(350);
+  appendLog('warn', '[!!!] Destroying UEFI boot entries... done');
+  await sleep(350);
+  appendLog('crit', '[FATAL] /dev/sda: unrecoverable I/O error');
+  await sleep(350);
+  appendLog('crit', '[FATAL] Kernel panic — hardware integrity lost');
+  await sleep(600);
+
+  startCountdown();
+}
+
+function startCountdown() {
+  if (alarmInterval) clearInterval(alarmInterval);
+  el('wrap').style.animation = 'fastshake .08s infinite';
+  el('screen').style.display    = 'none';
+  el('barwrap').style.display   = 'none';
+  el('statsbar').style.display  = 'none';
+  el('alertbanner').style.display = 'none';
+
+  el('doom-fc').textContent = fileCount.toLocaleString();
+  el('doomscreen').style.display = 'flex';
+
+  /* play low alarm beeps faster */
+  alarmInterval = setInterval(() => {
+    if (!audioCtx) return;
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = 'sawtooth';
+    o.frequency.value = 440;
+    g.gain.setValueAtTime(.22, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(.001, audioCtx.currentTime + .22);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(); o.stop(audioCtx.currentTime + .22);
+  }, 700);
+
+  let c = 5;
+  el('doom-count').textContent = c;
+  const iv = setInterval(() => {
+    c--;
+    el('doom-count').textContent = c;
+    if (c <= 0) { clearInterval(iv); setTimeout(showFinal, 300); }
+  }, 1000);
+}
+
+function showFinal() {
+  clearInterval(alarmInterval); audioCtx = null;
+  ended = true;
+  el('wrap').style.animation = 'none';
+  el('doomscreen').style.display = 'none';
+  el('finalscreen').style.display = 'flex';
+  el('ttl').textContent = 'SYSTEM OFFLINE';
+  el('ttl').classList.remove('alert');
+  el('ttl').style.color = '#1a0000';
+  setTimeout(() => { el('esc-hint').style.display = 'block'; }, 1200);
+}
+
+/* ── ESC — only after final screen ── */
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && ended) {
     window.removeEventListener('popstate', navLock);
+    el('finalscreen').style.display = 'none';
+    el('wrap').style.display = 'none';
+    document.body.style.background = '#0a0a0a';
+    el('safescreen').style.display = 'flex';
+    document.body.style.cursor = 'auto';
   }
+});
 
-  function triggerJumpscare() {
-    alive = false;
-    caret.style.display = 'none';
-    document.body.classList.add('shake-body');
-    playScream();
-    scare.style.display = 'block';
-    // Auto-dismiss after 5 seconds
-    setTimeout(showSafe, 5000);
-  }
-
-  // ───────── Main sequence ─────────
-  async function main() {
-    await wait(400);
-    wl("Microsoft Windows [Version 10.0.19045.4651]");
-    wl("(c) Microsoft Corporation. All rights reserved.");
-    wl();
-
-    // User types del command with personal folder
-    await typeCmd(`C:\\Users\\${USER}>`, `cd \\Windows\\System32`);
-    await typeCmd(`C:\\Windows\\System32>`, `del /f /s /q "C:\\Users\\${USER}"`);
-
-    await wait(600);
-    wl();
-    wl(`C:\\Users\\${USER}\\Desktop\\Passwords.txt`);
-    await wait(350);
-
-    let delay = 500;
-    // Phase 1: slow, recognizable personal files — most disturbing
-    for (let i = 0; i < 8; i++) {
-      if (!alive) return;
-      wl(fakeFile());
-      await wait(delay);
-      delay = Math.max(55, delay * 0.80);
-    }
-
-    wl();
-    wl("Cannot read file system. Attempting write override...");
-    await wait(700);
-    wl("Override accepted. Continuing purge...");
-    wl();
-    await wait(500);
-
-    // Phase 2: faster — system files mix in
-    delay = 45;
-    for (let i = 0; i < 40; i++) {
-      if (!alive) return;
-      wl(fakeFile());
-      await wait(delay + Math.random() * 15);
-    }
-
-    if (!alive) return;
-
-    // Phase 3: it goes red and error floods
-    out.style.color = "#cc0000";
-    wl();
-    wl("KERNEL32.DLL — Access violation at 0x7FFDE000");
-    await wait(500);
-    wl("ntdll.dll — Fatal read error.");
-    await wait(400);
-    wl("DISK I/O ERROR: sector 0x0000007E unrecoverable.");
-    await wait(600);
-    wl();
-    wl("CRITICAL_PROCESS_DIED — stopping all threads.");
-    await wait(700);
-
-    // Phase 4: Garbage corruption
-    for (let i = 0; i < 20; i++) {
-      if (!alive) return;
-      let g = '';
-      for (let j = 0; j < rnd(30, 100); j++) g += String.fromCharCode(rnd(33, 126));
-      wl(g);
-      await wait(10);
-    }
-
-    if (!alive) return;
-
-    // Black flash, then JUMPSCARE
-    document.getElementById('cmd-window').style.display = 'none';
-    document.body.style.background = '#000';
-    await wait(1000); // builds tension — silence / black screen
-
-    scareShown = true;
-    triggerJumpscare();
-  }
-
-  main();
-
-  // ───────── ESC exits — only after jumpscare ─────────
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && scareShown) showSafe();
-  });
+main();
 </script>
 </body>
 </html>
