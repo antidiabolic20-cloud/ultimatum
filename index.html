@@ -9,6 +9,7 @@
 
 body {
   background: #0a0a0a;
+  color: #aaa;
   min-height: 100vh;
   display: flex;
   align-items: center;
@@ -123,13 +124,13 @@ body {
 #log::-webkit-scrollbar { width:3px; }
 #log::-webkit-scrollbar-thumb { background:#2a0000; }
 
-.dim  { color:#2a1000; }
+.dim  { color:#666; }
 .sys  { color:#ff4400; }
 .warn { color:#ff0000; font-weight:600; }
 .path { color:#cc2200; }
 .info { color:#ff6600; }
 .crit { color:#ff0000; animation:flicker .4s infinite; }
-.ok   { color:#550000; }
+.ok   { color:#888; }
 .bl   { animation:blink .7s step-end infinite; }
 
 /* ─── DOOM COUNTDOWN ─── */
@@ -234,8 +235,8 @@ body {
   <!-- Log area -->
   <div id="screen">
     <div id="log">
-      <span class="dim">Last login: Thu Mar 27 09:13:02 2025 on ttys001</span><br>
-      <span class="dim">root@SYSTEM:~# <span class="bl">█</span></span><br>
+      <span class="ok">Last login: Thu Mar 27 09:13:02 2025 on ttys001</span><br>
+      <span class="ok">root@SYSTEM:~# <span class="bl">█</span></span><br>
     </div>
   </div>
 
@@ -392,7 +393,7 @@ function appendLog(cls, text) {
 async function typeCmd(prompt, cmd) {
   const log = el('log');
   const line = document.createElement('span');
-  line.className = 'dim';
+  line.className = 'ok';
   line.textContent = prompt;
   log.appendChild(line);
   log.scrollTop = log.scrollHeight;
