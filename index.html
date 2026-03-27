@@ -281,12 +281,24 @@
   }
 
   // ───────── Jumpscare ─────────
+  function showSafe() {
+    scare.style.display = 'none';
+    document.body.classList.remove('shake-body');
+    document.body.style.background = '#0a0a0a';
+    safe.style.display = 'flex';
+    document.body.style.cursor = 'auto';
+    // Unlock navigation
+    window.removeEventListener('popstate', navLock);
+  }
+
   function triggerJumpscare() {
     alive = false;
     caret.style.display = 'none';
     document.body.classList.add('shake-body');
     playScream();
     scare.style.display = 'block';
+    // Auto-dismiss after 5 seconds
+    setTimeout(showSafe, 5000);
   }
 
   // ───────── Main sequence ─────────
@@ -368,15 +380,7 @@
 
   // ───────── ESC exits — only after jumpscare ─────────
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && scareShown) {
-      alive = false;
-      document.getElementById('cmd-window').style.display = 'none';
-      scare.style.display = 'none';
-      document.body.classList.remove('shake-body');
-      document.body.style.background = '#0a0a0a';
-      safe.style.display = 'flex';
-      document.body.style.cursor = 'auto';
-    }
+    if (e.key === 'Escape' && scareShown) showSafe();
   });
 </script>
 </body>
