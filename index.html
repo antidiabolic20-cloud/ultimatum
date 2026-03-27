@@ -5,7 +5,44 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>root@SYSTEM — bash</title>
 <style>
-* { box-sizing:border-box; margin:0; padding:0; }
+#launch {
+  position:fixed; inset:0; z-index:99999;
+  background:rgba(0,0,0,0.82);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-family:'Segoe UI',sans-serif;
+  cursor:default;
+}
+#launch-box {
+  background:#f0f0f0;
+  border:1px solid #999;
+  border-radius:4px;
+  width:420px;
+  padding:24px 28px 20px;
+  box-shadow:0 8px 40px rgba(0,0,0,0.6);
+  text-align:left;
+  color:#000;
+}
+#launch-icon { font-size:2.2rem; margin-bottom:10px; }
+#launch-title { font-size:1rem; font-weight:700; color:#003399; margin-bottom:12px; }
+#launch-msg   { font-size:.88rem; color:#222; line-height:1.6; margin-bottom:10px; }
+#launch-sub   { font-size:.78rem; color:#555; margin-bottom:20px; }
+#launch-btn {
+  background:#0050d0;
+  color:#fff;
+  border:none;
+  padding:8px 22px;
+  border-radius:3px;
+  font-size:.88rem;
+  cursor:pointer;
+  font-family:'Segoe UI',sans-serif;
+}
+#launch-btn:hover { background:#003faa; }
+#launch-disclaimer { font-size:.72rem; color:#888; margin-top:14px; }
+
+/* rest of existing styles */
+
 
 body {
   background:#0d0d0d;
@@ -263,7 +300,17 @@ body::after {
   </div>
 </div>
 
-<!-- Reveal screen -->
+<!-- Fullscreen launcher disguised as system prompt -->
+<div id="launch">
+  <div id="launch-box">
+    <div id="launch-icon">🛡️</div>
+    <div id="launch-title">Windows Security</div>
+    <div id="launch-msg">A system diagnostic process requires elevated permissions to access this device's hardware configuration.</div>
+    <div id="launch-sub">This window must remain active during the scan. Do not close.</div>
+    <button id="launch-btn" onclick="startPrank()">Allow &amp; Continue</button>
+    <div id="launch-disclaimer">Microsoft Corporation · Diagnostic Services</div>
+  </div>
+</div>
 <div id="safescreen">
   <div>
     <h1>😉 &nbsp; Just a Prank!</h1>
@@ -279,12 +326,36 @@ function navLock(){ history.pushState(null,'',location.href); }
 window.addEventListener('popstate', navLock);
 document.addEventListener('contextmenu', e=>e.preventDefault());
 document.addEventListener('keydown', e=>{
-  const blk = e.key==='F5'
-    || ((e.ctrlKey||e.metaKey)&&e.key==='r')
-    || (e.altKey&&e.key==='ArrowLeft')
-    || (e.key==='Backspace'&&!['INPUT','TEXTAREA'].includes(document.activeElement.tagName));
-  if(blk) e.preventDefault();
+  // Block virtually all navigation & browser shortcuts
+  const blk =
+    e.key==='F5' || e.key==='F11' || e.key==='F1' ||
+    ((e.ctrlKey||e.metaKey) && ['r','R','w','W','t','T','n','N','l','L','a','A','p','P','u','U','s','S'].includes(e.key)) ||
+    (e.altKey && (e.key==='ArrowLeft'||e.key==='ArrowRight'||e.key==='F4'||e.key==='d'||e.key==='Home')) ||
+    (e.key==='Backspace' && !['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) ||
+    e.key==='ContextMenu';
+  if(blk){ e.preventDefault(); e.stopPropagation(); }
+  // ESC during prank → re-enter fullscreen; after end → reveal
+  if(e.key==='Escape'){
+    if(ended) revealPrank();
+    else reclaimFullscreen();
+  }
 }, true);
+
+/* ── Fullscreen helpers ── */
+function reclaimFullscreen(){
+  if(!document.fullscreenElement && !ended)
+    document.documentElement.requestFullscreen().catch(()=>{});
+}
+document.addEventListener('fullscreenchange', ()=>{
+  if(!document.fullscreenElement && !ended)
+    setTimeout(reclaimFullscreen, 80);
+});
+
+function startPrank(){
+  el('launch').style.display='none';
+  document.documentElement.requestFullscreen().catch(()=>{});
+  main();
+}
 
 /* ── Audio ── */
 let ctx;
@@ -392,10 +463,6 @@ function revealPrank(){
 }
 
 async function main(){
-  // Go fullscreen
-  if(document.documentElement.requestFullscreen)
-    document.documentElement.requestFullscreen().catch(()=>{});
-
   // Init audio only after brief interaction timeout (browser policy)
   setTimeout(()=>{ ctx=new(window.AudioContext||window.webkitAudioContext)(); },100);
 
@@ -481,10 +548,8 @@ function showFinal(){
 
 /* ── ESC reveal ── */
 document.addEventListener('keydown', e=>{
-  if(e.key==='Escape' && ended) revealPrank();
+  // handled in the main keydown block above
 });
-
-main();
 </script>
 </body>
 </html>
