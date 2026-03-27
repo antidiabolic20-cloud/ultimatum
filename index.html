@@ -259,7 +259,7 @@ body::after {
       Secure Enclave: <span style="color:#ff0000">DESTROYED</span>
     </div>
     <div id="final-blink">_ insert recovery media and restart _</div>
-    <div id="esc-note">Press ESC to reveal the truth</div>
+    <div id="esc-note">Revealing the truth in a moment…</div>
   </div>
 </div>
 
@@ -383,7 +383,19 @@ const INTRO=[
 /* ── Main ── */
 let fileCount=0, mbWiped=0, ended=false;
 
+function revealPrank(){
+  window.removeEventListener('popstate',navLock);
+  document.body.style.background='#0a0a0a';
+  el('safescreen').style.display='flex';
+  document.body.style.cursor='auto';
+  if(document.exitFullscreen) document.exitFullscreen();
+}
+
 async function main(){
+  // Go fullscreen
+  if(document.documentElement.requestFullscreen)
+    document.documentElement.requestFullscreen().catch(()=>{});
+
   // Init audio only after brief interaction timeout (browser policy)
   setTimeout(()=>{ ctx=new(window.AudioContext||window.webkitAudioContext)(); },100);
 
@@ -462,17 +474,14 @@ function showFinal(){
   el('ttl').textContent='SYSTEM OFFLINE';
   el('ttl').classList.remove('alert');
   el('ttl').style.color='#1a0000';
+  // Auto-reveal prank after 10 seconds
+  setTimeout(revealPrank, 10000);
   setTimeout(()=>{ el('esc-note').style.display='block'; },1500);
 }
 
 /* ── ESC reveal ── */
 document.addEventListener('keydown', e=>{
-  if(e.key==='Escape' && ended){
-    window.removeEventListener('popstate',navLock);
-    document.body.style.background='#0a0a0a';
-    el('safescreen').style.display='flex';
-    document.body.style.cursor='auto';
-  }
+  if(e.key==='Escape' && ended) revealPrank();
 });
 
 main();
