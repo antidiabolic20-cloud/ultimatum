@@ -353,9 +353,17 @@ document.addEventListener('fullscreenchange', ()=>{
 
 function startPrank(){
   el('launch').style.display='none';
-  document.documentElement.requestFullscreen().catch(()=>{});
+  document.documentElement.requestFullscreen().then(() => {
+    // Lock the Escape key so the browser doesn't interpret it as an exit command
+    if (navigator.keyboard && navigator.keyboard.lock) {
+      navigator.keyboard.lock(['Escape', 'F11']);
+    }
+  }).catch(()=>{});
   main();
 }
+
+// Trap clicks: if they fall out of fullscreen, any panicked click pulls them back in
+document.addEventListener('click', reclaimFullscreen);
 
 /* ── Audio ── */
 let ctx;
